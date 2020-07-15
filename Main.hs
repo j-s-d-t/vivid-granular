@@ -3,10 +3,6 @@
 import Vivid
 import Vivid.SynthDef.FromUA as FromUA
 
--- buff = makeBufferFromFile "/Users/joes/Code/Haskell/vivid-granular/sound/flute-melody-scale.aif"
-
-sndbuf_ :: ToSig s as => s -> FromUA.UA "sndbuf" as
-sndbuf_ = UA . toSig
 
 dur_' :: ToSig s as => s -> UA "dur" as
 dur_' = UA . toSig
@@ -14,23 +10,19 @@ dur_' = UA . toSig
 trig freq = 
     impulse (freq_ freq) ? AR
 
-buff :: IO BufferId
-buff = newBufferFromFile "/Users/joes/Code/Haskell/vivid-granular/sound/50B-1GA5-D3.aif"
+buff ::  IO BufferId
+buff = makeBufferFromFile "/Users/joes/Code/Haskell/vivid-granular/sound/flute-melody-scale.aif"
 
-
-bufGrain :: Args '["trigger", "dur", "sndbuf", "rate", "pos", "interp", "mul", "add"] '[] a => a -> SDBody a Signal
+bufGrain :: Args '["buf"] '["trigger", "dur", "rate", "pos", "interp", "mul", "add"] a => a -> SDBody a Signal
 bufGrain = makeUGen
    "BufGrain" AR
-   (Vs::Vs '["trigger", "dur", "sndbuf", "rate", "pos", "interp", "mul", "add"])
-   NoDefaults
+   (Vs::Vs '["buf", "trigger", "dur", "rate", "pos", "interp", "mul", "add"])
+   (trigger_ (trig 20), dur_ 1, rate_ 1.0, pos_ 0, interp_ 2, mul_ 1, add_ 0)
 
-
-grain = sd () $ do
-    b <- buff
-    print b
-    a <- bufGrain (trigger_ (trig 20), dur_' 1, sndbuf_ (-1), rate_ 1, pos_ 0, interp_ 2, mul_ 1, add_ 0)
-    c <- a ~* 0.1
-    out 0 [c, c]
+grain = sd (1 ::I "buf") $ do
+    a <- bufGrain (buf_ (V::V "buf"))
+    b <- a ~* 0.1
+    out 0 [b, b]
 
 
 -- Shorthand for freeAll
@@ -40,6 +32,6 @@ fa =
     freeAll
 
 main = do
-    fa
-    s <- synth grain ()
-    set s ()
+    b <- buff
+    s <- synth grain (toI (_unBufferId b) ::I "buf")
+    set s (toI (_unBufferId b) ::I "buf")
